@@ -1,0 +1,42 @@
+name: Run Tests and Generate CML Report
+
+on:
+  # This action runs on every Pull Request that targets the 'main' branch
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-report:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+    steps:
+      # Step 1: Check out the repository code
+      - uses: actions/checkout@v3
+
+      # Step 2: Set up Python environment
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 4: Run pytest and save the output to a file
+      # The '|| true' part ensures that the workflow continues even if tests fail,
+      # so we can still post the report.
+      - name: Run tests and create report
+        run: |
+          pytest tests/test_validation.py > test_report.txt || true
+      
+      # Step 5: Create a CML comment on the Pull Request
+      - name: Post CML report as a comment
+        env:
+          # The GITHUB_TOKEN is a secret automatically provided by GitHub
+          # to allow the action to post comments on your behalf.
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use CML to format the content of test_report.txt and post it
+          cml comment create --body-file test_report.txt
